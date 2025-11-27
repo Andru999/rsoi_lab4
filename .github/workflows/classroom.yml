@@ -42,8 +42,8 @@ jobs:
       - name: Build Docker images
         run: docker compose build
 
-      - name: Docker Login to Yandex Cloud CR
-        run: echo "${{ secrets.YC_CR_SECRET }}" | docker login -u "${{ secrets.YC_CR_KEY_ID }}" --password-stdin cr.yandex
+      - name: Docker login YC
+        run: echo '${{ secrets.YC_JSON_KEY }}' | docker login -u json_key --password-stdin cr.yandex
 
       - name: Push Docker images
         run: docker compose push
