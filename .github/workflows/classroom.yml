@@ -7,29 +7,113 @@ on:
     branches:
       - master
 jobs:
-  build:
-    name: Autograding
+  unit-tests:
+    name: Run unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Set up python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install the necessary packages
+        run: pip3.10 install -r requirements.txt
+
+      - name: Run unit tests for ticket service
+        run: pytest -vs ticket_service/app/unit_tests/ticket.py
+
+      - name: Run unit tests for flight service
+        run: pytest -vs flight_service/app/unit_tests/flight.py
+
+  deploy:
+    name: Deploy service on Yandex Cloud
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - uses: docker/setup-buildx-action@v2
 
-      # TODO build and run unit tests
+      - name: Docker build
+        timeout-minutes: 5
+        run: docker compose build
 
-      - name: Build images
-        timeout-minutes: 10
-        run: docker compose build --push
+      - name: Yandex Container Registry Login
+        env:
+          CRYANDEX_PASSWORD: ${{ secrets.CRYANDEX_PASSWORD }}
+        run: |
+          echo "$CRYANDEX_PASSWORD" | docker login \
+            --username oauth \
+            --password-stdin \
+            cr.yandex
 
-      # TODO deploy to k8s with liveness and readyness probes
+      - name: Docker Publish
+        run: docker compose push
 
-      - name: Wait before services are ready
-        run: kubectl wait -n test -l app.kubernetes.io/name=gateway pod --for=condition=Ready --timeout 3m
-      
-      # TODO setup parameters in classroom/autograding.json
-      
-      - name: Autograding
-        uses: education/autograding@v1
-        continue-on-error: true
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+
+      - name: Setup Kubeconfig
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBECONFIG_CONTENT" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Verify Cluster Access
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Deploy Database
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          cp ./bonus_service/sql/init_db.sql ./k8s/postgres-chart/bonusdb-init-db.sql
+          cp ./flight_service/sql/init_db.sql ./k8s/postgres-chart/flightdb-init-db.sql  
+          cp ./ticket_service/sql/init_db.sql ./k8s/postgres-chart/ticketdb-init-db.sql
+          
+          helm upgrade --install db \
+            ./k8s/postgres-chart \
+            --set postgresql.password=$POSTGRES_PASSWORD \
+            --wait --timeout 5m
+
+      - name: Deploy Application
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REGISTRY_URL: cr.yandex/your-registry-id
+        run: |
+          helm upgrade --install my-app \
+            ./k8s/app-chart \
+            --set database.password=$POSTGRES_PASSWORD \
+            --set image.registry=$REGISTRY_URL \
+            --wait --timeout 5m
+
+      - name: Verify Deployment
+        run: |
+          kubectl get pods
+          kubectl get services
+
+  autograding:
+    name: Autograding
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run API Tests
+        timeout-minutes: 5
+        run: ./scripts/test-script.sh
+        env:
+          VARIANT: v1
+          DEPLOYMENT_NAME: bonus_service
+          NAMESPACE: default
