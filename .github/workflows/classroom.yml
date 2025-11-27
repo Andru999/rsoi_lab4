@@ -29,7 +29,7 @@ jobs:
       - name: Run unit tests for flight service
         run: pytest -vs flight_service/app/unit_tests/flight.py
 
- deploy:
+  deploy:
     name: Deploy to Yandex Cloud
     runs-on: ubuntu-latest
     needs: unit-tests
