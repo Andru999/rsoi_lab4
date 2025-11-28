@@ -33,6 +33,10 @@
   }
 
   step() {
+
+    printf "Sleep for waiting\n"
+    sleep 305
+
     local step=$1
     [[ $((step % 2)) -eq 0 ]] && replicas=1 || replicas=0
 
