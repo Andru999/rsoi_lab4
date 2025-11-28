@@ -23,12 +23,7 @@ spec:
           env:
             {{- range $k, $v := .service.env}}
             - name: {{$k | quote}}
-            {{- $fixedadr := $v}}
-            {{- range $serviceName,$v := $.services}}
-            {{- $fixedadr = ($fixedadr | replace (printf "://%s/" $serviceName) (printf "://%s-%s-srv/" $.ctx.Release.Name $serviceName) )}}
-            {{- $fixedadr = ($fixedadr | replace (printf "host=%s" $serviceName) (printf "host=%s-%s-srv" $.ctx.Release.Name $serviceName) )}}
-            {{- end}}
-              value: {{$fixedadr | quote}}
+              value: {{$v | quote}}  {{/* Убрана автоматическая замена */}}
             {{- end }}
       restartPolicy: Always
 {{- end}}
