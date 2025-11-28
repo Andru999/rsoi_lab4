@@ -63,6 +63,10 @@ jobs:
           cp ./ticket_service/sql/init_db.sql ./k8s/postgres-chart/ticketdb-init-db.sql
           helm --kubeconfig ./kubeconfig.yaml upgrade --install db ./k8s/postgres-chart
 
+      - name: Deploy Database Aliases
+        run: |
+          helm upgrade --install db-aliases ./k8s/db-aliases-chart
+
       - name: Deploy Application
         env:
           POSTGRES_PASSWORD: test
