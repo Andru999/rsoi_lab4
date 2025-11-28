@@ -2,20 +2,20 @@ databases:
   bonus_db:
     user: postgres
     password: password
-    db: bonus_db
-    host: bonus_database
+    db: bonusdb
+    host: bonusdb
     port: 5432
   flight_db:
     user: postgres
     password: password
-    db: flight_db
-    host: flight_database
+    db: flightdb
+    host: flightdb
     port: 5432
   ticket_db:
     user: postgres
     password: password
-    db: ticket_db
-    host: ticket_database
+    db: ticketdb
+    host: ticketdb
     port: 5432
 
 services:
@@ -39,8 +39,8 @@ services:
     port: 8080
     log_level: "info"
     reload: True
-    bonus_host:  bonus_service
-    flight_host: flight_service
-    ticket_host: ticket_service
+    bonus_host:  bonus-service
+    flight_host: flight-service
+    ticket_host: ticket-service
     max_num_of_fails: 2
     timeout: 10
